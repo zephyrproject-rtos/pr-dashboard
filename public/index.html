@@ -328,10 +328,11 @@
       }
 
       function refreshData() {
-        const urls = ["prs.json", "users.json"];
+        const tsQueryParam = `?ts=${new Date().getTime()}`;
+        const urls = ["prs.json", "users.json"].map((url) => `${url}${tsQueryParam}`);
 
         // basic HEAD request on prs.json to get last modified date
-        fetch("prs.json", { method: "HEAD" }).then((res) => {
+        fetch(`prs.json${tsQueryParam}`, { method: "HEAD" }).then((res) => {
           d = new Date(res.headers.get("last-modified"));
           document.getElementById("last_update").textContent = `Last update: ${moment(
             d
@@ -346,6 +347,9 @@
               .catch((error) => {
                 console.error("Error refreshing data:", error);
               });
+          } else {
+            // raw data hasn't changed but redraw table to update "since" columns
+            $(".prs").DataTable().rows().invalidate().draw();
           }
         });
       }
