@@ -1,5 +1,5 @@
 #!/bin/sh
 
-wget --progress=dot https://fabiobaltieri.github.io/pr-dashboard/data_dump.json.bz2 -O cache/data_dump.json.bz2
+wget --progress=dot https://pr-dashboard.zephyrproject.io/data_dump.json.bz2 -O cache/data_dump.json.bz2
 rm -f cache/data_dump.json
 bunzip2 cache/data_dump.json.bz2
