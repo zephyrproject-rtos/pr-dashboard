@@ -19,7 +19,7 @@ PAGE_SIZE_ZEPHYR = 50
 
 
 def print_rate_limit(gh, org):
-    rate_limit = gh.get_rate_limit().graphql
+    rate_limit = gh.get_rate_limit().resources.graphql
     print(f"GraphQL rate limit for {org}: {rate_limit.remaining}/{rate_limit.limit}")
 
 
