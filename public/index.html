@@ -146,7 +146,7 @@
                   docLink = `<a href="${docHref}" target="_blank" title="CI-built documentation">
                                <i class="bi bi-file-earmark-text"></i>
                              </a>`;
-                  return docLink + " " + prLink(row[12], data, data);
+                  return docLink + " " + prLink(row[13], data, data);
                 } else {
                   return data;
                 }
@@ -158,7 +158,7 @@
               responsivePriority: 2,
               render: (data, type, row) => {
                 if (type == "display") {
-                  const link = prLink(row[12], row[0], data);
+                  const link = prLink(row[13], row[0], data);
                   // add orange "R" badge if rebasing is needed, and a red "CI" badge if CI fails
                   let badges = "";
                   if (!row[8] || row[9]) {
@@ -171,6 +171,9 @@
                   }
                   if (row[11]) {
                     badges = `<span class="badge bg-secondary">?</span> `;
+                  }
+                  if (row[12]) {
+                    badges += `<span class="badge bg-success">T</span> `;
                   }
 
                   return badges + link;
@@ -216,6 +219,7 @@
             { title: "CI Passes", visible: false },
             { title: "Rebase needed", visible: false },
             { title: "Unknown mergeable status", visible: false },
+            { title: "Trivial", visible: false },
             { title: "Repo", visible: false },
           ],
           order: [[6, "desc"]], // Show most recently updated PRs first
@@ -254,6 +258,7 @@
             prData.ci_pending,
             prData.needs_rebase,
             prData.unknown_mergeable_status,
+            prData.trivial,
             repo,
           ];
 
@@ -535,6 +540,7 @@
             failed / pending
           </li>
           <li><span class="badge bg-secondary">?</span> Unknown status</li>
+          <li><span class="badge bg-success">T</span> Trivial</li>
           <li><i class="bi bi-file-earmark-text"></i> CI-built documentation</li>
         </ul>
       </div>

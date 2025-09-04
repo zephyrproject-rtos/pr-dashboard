@@ -50,6 +50,7 @@ class PR:
     needs_rebase: bool = False
     ci_passes: bool = True
     ci_pending: bool = True
+    trivial: bool = False
 
     def toJSON(self):
         out = {}
@@ -96,6 +97,10 @@ def main(argv):
             status_check = commits_nodes[0]["commit"]["statusCheckRollup"]
             pr.ci_passes = status_check and status_check.get("state") == "SUCCESS"
             pr.ci_pending = status_check and status_check.get("state") == "PENDING"
+
+        # Check for "Trivial" label
+        labels = pr_data.get("labels", {}).get("nodes", [])
+        pr.trivial = any(label["name"] == "Trivial" for label in labels)
 
         users[pr.author].author.add(key)
 
