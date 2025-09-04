@@ -15,7 +15,7 @@ token = os.environ["GITHUB_TOKEN"]
 DATA_FILE = "cache/data_dump.json"
 
 PAGE_SIZE_SMALL_REPOS = 10
-PAGE_SIZE_ZEPHYR = 50
+PAGE_SIZE_ZEPHYR = 30
 
 
 def print_rate_limit(gh, org):
@@ -160,6 +160,11 @@ query (
                   state
                 }
               }
+            }
+          }
+          labels(first: 20) {
+            nodes {
+              name
             }
           }
         }
