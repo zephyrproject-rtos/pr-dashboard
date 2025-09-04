@@ -271,7 +271,7 @@
 
       function appendUser(values) {
         appendData(values.author, "author");
-        appendData(values.blocking, "blocking");
+        appendData(values.blocking, "requested_changes");
         appendData(values.assignee, "assignee");
         appendData(values.reviewer, "reviewer");
         appendData(values.approved, "approved");
@@ -369,7 +369,7 @@
       window.addEventListener("load", () => {
         const tableConfigs = [
           { id: "author", caption: "Authored" },
-          { id: "blocking", caption: "Blocked" },
+          { id: "requested_changes", caption: "Requested changes" },
           { id: "assignee", caption: "Assigned" },
           { id: "reviewer", caption: "Reviewer" },
           { id: "approved", caption: "Approved" },
@@ -390,7 +390,7 @@
             { title: "Authored", responsivePriority: 2 },
             { title: "Assigned", responsivePriority: 3 },
             { title: "Approved", responsivePriority: 4 },
-            { title: "Blocked", responsivePriority: 5 },
+            { title: "Requested changes", responsivePriority: 5 },
           ],
           paging: true,
           info: false,
@@ -452,7 +452,7 @@
             <a class="nav-link" href="#author">Authored</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#blocking">Blocked</a>
+            <a class="nav-link" href="#requested_changes">Requested changes</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="#assignee">Assigned</a>
@@ -505,7 +505,7 @@
       id="scroll-area">
       <table id="author" class="table table-sm table-striped table-hover prs display"></table>
       <hr class="border border-primary border-3 opacity-25" />
-      <table id="blocking" class="table table-sm table-striped table-hover prs display"></table>
+      <table id="requested_changes" class="table table-sm table-striped table-hover prs display"></table>
       <hr class="border border-primary border-3 opacity-25" />
       <table id="assignee" class="table table-sm table-striped table-hover prs display"></table>
       <hr class="border border-primary border-3 opacity-25" />
