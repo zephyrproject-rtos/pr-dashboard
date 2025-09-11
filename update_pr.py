@@ -8,7 +8,7 @@ import argparse
 import json
 import os
 import sys
-from github import Github
+import github
 
 token = os.environ["GITHUB_TOKEN"]
 
@@ -233,8 +233,8 @@ def main(argv):
     args = parse_args(argv)
     all_prs = []
 
-    token = os.environ.get("GITHUB_TOKEN", None)
-    gh = Github(token)
+    auth = github.Auth.Token(os.environ.get("GITHUB_TOKEN", None))
+    gh = github.Github(auth=auth)
     print_rate_limit(gh, args.org)
 
     for repo in args.repos.split(","):
