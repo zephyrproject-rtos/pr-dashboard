@@ -164,16 +164,16 @@
                   if (!row[8] || row[9]) {
                     // broken CI is red, pending CI is blue
                     badge_color = row[9] ? "info" : "danger";
-                    badges += `<span class="badge bg-${badge_color}">CI</span> `;
+                    badges += `<span class="badge bg-${badge_color}" title="CI failed / pending">CI</span> `;
                   }
                   if (row[10]) {
-                    badges += `<span class="badge bg-warning text-dark">R</span> `;
+                    badges += `<span class="badge bg-warning text-dark" title="Rebase needed">R</span> `;
                   }
                   if (row[11]) {
-                    badges = `<span class="badge bg-secondary">?</span> `;
+                    badges = `<span class="badge bg-secondary" title="Unknown status">?</span> `;
                   }
                   if (row[12]) {
-                    badges += `<span class="badge bg-success">T</span> `;
+                    badges += `<span class="badge bg-success" title="Trivial">T</span> `;
                   }
 
                   return badges + link;
