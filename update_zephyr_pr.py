@@ -10,7 +10,17 @@ import subprocess
 
 manifest = Manifest.from_file()
 
-repos = ["zephyr"]
+repos = [
+        "action-manifest",
+        "action-zephyr-setup",
+        "docker-image",
+        "example-application",
+        "infrastructure",
+        "pr-dashboard",
+        "sdk-ng",
+        "zephyr",
+]
+
 for project in manifest.get_projects([]):
     if not manifest.is_active(project):
         continue
