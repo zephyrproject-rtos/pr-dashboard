@@ -75,7 +75,12 @@ def main(argv):
     prs = {}
 
     with open(INFILE, "r") as infile:
-        pr_dump = json.load(infile)
+        json_dump = json.load(infile)
+
+    org = json_dump["org"]
+    pr_dump = json_dump["prs"]
+
+    print(org)
 
     for pr_data in pr_dump:
         key = f"{pr_data['repository']['name']}/{pr_data['number']}"
@@ -195,8 +200,9 @@ def main(argv):
     with open(f"{OUTDIR}/users.json", "w") as outfile:
         json.dump(users, outfile, cls=Encoder, indent=4)
 
+    json_data = {"org": org, "prs": prs}
     with open(f"{OUTDIR}/prs.json", "w") as outfile:
-        json.dump(prs, outfile, cls=Encoder, indent=4)
+        json.dump(json_data, outfile, cls=Encoder, indent=4)
 
 
 if __name__ == "__main__":
