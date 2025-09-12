@@ -70,6 +70,7 @@
         });
       })();
 
+      metadata = null;
       prs = null;
       lastDatasetUpdate = null;
 
@@ -109,7 +110,7 @@
       }
 
       function prLink(repo, pr, text) {
-        return `<a href="https://github.com/zephyrproject-rtos/${repo}/pull/${pr}">${text}</a>`;
+        return `<a href="https://github.com/${metadata.org}/${repo}/pull/${pr}">${text}</a>`;
       }
 
       function userLink(user, internal = true) {
@@ -142,7 +143,7 @@
               type: "string",
               render: (data, type, row) => {
                 if (type == "display") {
-                  docHref = `https://builds.zephyrproject.io/zephyr/pr/${row[0]}/docs/index.html`;
+                  let docHref = metadata.doc_url.replaceAll('${pr}', '${row[0]}');
                   docLink = `<a href="${docHref}" target="_blank" title="CI-built documentation">
                                <i class="bi bi-file-earmark-text"></i>
                              </a>`;
@@ -278,25 +279,25 @@
         appendData(values.previously_approved, "previously_approved");
         appendData(values.commented, "commented");
 
-        // find all unassigned zephyr PRs needing attention
+        // find all unassigned manifest repo PRs needing attention
         const unassigned = Object.keys(prs).filter((key) => {
           const prData = prs[key];
           const repo = key.split("/")[0];
           const pr = key.split("/")[1];
-          if (repo !== "zephyr") {
+          if (repo !== metadata.manifest_repo) {
             return false;
           }
           return prData.assignee_names.length === 0 && !prData.draft;
         });
         appendData(unassigned, "unassigned");
 
-        // find all zephyr PRs were only the assignee has approved (and no one else) and where no
+        // find all manifest repo PRs were only the assignee has approved (and no one else) and where no
         // one as blocked, or PRs with only one approval where author is one of the assignees
         const missingOneApproval = Object.keys(prs).filter((key) => {
           const prData = prs[key];
           const repo = key.split("/")[0];
           const pr = key.split("/")[1];
-          if (repo !== "zephyr") {
+          if (repo !== metadata.manifest_repo) {
             return false;
           }
           const assigneeIsAuthor = prData.assignee_names.includes(prData.author);
@@ -366,7 +367,7 @@
         });
       }
 
-      window.addEventListener("load", () => {
+      function initTable() {
         const tableConfigs = [
           { id: "author", caption: "Authored" },
           { id: "requested_changes", caption: "Requested changes" },
@@ -375,8 +376,8 @@
           { id: "approved", caption: "Approved" },
           { id: "previously_approved", caption: "Previously Approved" },
           { id: "commented", caption: "Commented" },
-          { id: "unassigned", caption: "Unassigned [zephyr repo only]" },
-          { id: "missing_one_approval", caption: "Needs 1 More Approval [zephyr repo only]" },
+          { id: "unassigned", caption: `Unassigned [${metadata.manifest_repo} repo only]` },
+          { id: "missing_one_approval", caption: `Needs 1 More Approval [${metadata.manifest_repo} repo only]` },
         ];
 
         tableConfigs.forEach((config) => {
@@ -426,6 +427,16 @@
 
         refreshData();
         setInterval(refreshData, 10000);
+      }
+
+      window.addEventListener("load", () => {
+        fetch("metadata.json").then((res) => res.json()).then((data) => {
+          metadata = data;
+          initTable();
+          })
+          .catch((err) => {
+            console.error("Error fetching metadata:", err);
+          });
       });
     </script>
   </head>

@@ -75,7 +75,12 @@ def main(argv):
     prs = {}
 
     with open(INFILE, "r") as infile:
-        pr_dump = json.load(infile)
+        json_dump = json.load(infile)
+
+    metadata = json_dump["metadata"]
+    pr_dump = json_dump["prs"]
+
+    print(metadata)
 
     for pr_data in pr_dump:
         key = f"{pr_data['repository']['name']}/{pr_data['number']}"
@@ -191,6 +196,9 @@ def main(argv):
 
     if not os.path.exists(OUTDIR):
         os.mkdir(OUTDIR)
+
+    with open(f"{OUTDIR}/metadata.json", "w") as outfile:
+        json.dump(metadata, outfile, cls=Encoder, indent=4)
 
     with open(f"{OUTDIR}/users.json", "w") as outfile:
         json.dump(users, outfile, cls=Encoder, indent=4)
