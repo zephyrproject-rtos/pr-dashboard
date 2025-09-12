@@ -108,8 +108,8 @@
         return `<span class="${linkClass}">${count}</span>`;
       }
 
-      function prLink(repo, pr, text) {
-        return `<a href="https://github.com/zephyrproject-rtos/${repo}/pull/${pr}">${text}</a>`;
+      function prLink(org, repo, pr, text) {
+        return `<a href="https://github.com/${org}/${repo}/pull/${pr}">${text}</a>`;
       }
 
       function userLink(user, internal = true) {

@@ -255,7 +255,7 @@ def main(argv):
         )
 
     print_rate_limit(gh, args.org)
-    all_prs = [pr["node"] for pr in all_prs]
+    all_prs = {"org": args.org, "prs": [pr["node"] for pr in all_prs]}
     save_prs(all_prs)
 
     return 0
