@@ -42,6 +42,15 @@ def parse_args(argv):
         "-o", "--org", default="zephyrproject-rtos", help="Github organisation"
     )
     parser.add_argument(
+        "-m", "--manifest-repo", default="zephyr", help="Manifest repo"
+    )
+    parser.add_argument(
+        "-d", "--doc-url",
+        default="https://builds.zephyrproject.io/zephyr/pr/${pr}/docs/index.html",
+        help="Doc URL, use ${pr} for the PR number"
+    )
+
+    parser.add_argument(
         "-r",
         "--repos",
         default="zephyr,segger",
@@ -255,7 +264,9 @@ def main(argv):
         )
 
     print_rate_limit(gh, args.org)
-    all_prs = [pr["node"] for pr in all_prs]
+    metadata = {"org": args.org, "manifest_repo": args.manifest_repo,
+                "doc_url": args.doc_url}
+    all_prs = {"metadata": metadata, "prs": [pr["node"] for pr in all_prs]}
     save_prs(all_prs)
 
     return 0
