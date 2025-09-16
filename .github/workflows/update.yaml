@@ -45,8 +45,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir cache
-          python -u update_zephyr_pr.py 2>&1
-          bzip2 -c cache/data_dump.json > public/data_dump.json.bz2
+
+          # Set to false for testing with cached data.
+          if true; then
+            python -u update_zephyr_pr.py 2>&1
+            bzip2 -c cache/data_dump.json > public/data_dump.json.bz2
+          else
+            ./download_cache_data
+          fi
 
       - name: Crunch
         run: |
