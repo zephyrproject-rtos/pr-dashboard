@@ -128,7 +128,7 @@ def main(argv):
             state = review["state"]
             if review["author"] is None:
                 continue
-            reviewer_name = review["author"]["login"]
+            reviewer_name = review["author"]["login"] if review["author"] else "ghost"
             print(f"review: {reviewer_name} {state}")
             match state:
                 case "COMMENTED":
@@ -155,7 +155,7 @@ def main(argv):
         # interested in refreshing their +1
         for tl_item in pr_data["dismissedReviewsTimelineItems"]["nodes"]:
             review = tl_item["review"]
-            reviewer_name = review["author"]["login"]
+            reviewer_name = review["author"]["login"] if review["author"] else "ghost"
             prev_review_state = tl_item["previousReviewState"]
             if prev_review_state != "APPROVED":
                 continue
