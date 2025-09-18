@@ -14,7 +14,7 @@ defaults:
     shell: bash
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -45,8 +45,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir cache
-          python -u update_zephyr_pr.py 2>&1
-          bzip2 -c cache/data_dump.json > public/data_dump.json.bz2
+
+          # Set to false for testing with cached data.
+          if true; then
+            python -u update_zephyr_pr.py 2>&1
+            bzip2 -c cache/data_dump.json > public/data_dump.json.bz2
+          else
+            ./download_cache_data
+          fi
 
       - name: Crunch
         run: |
@@ -80,3 +86,34 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
+
+  screenshot:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download pages artifact
+        uses: actions/download-artifact@v5
+        with:
+          path: public
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+
+      - name: Start a local web server and take a screenshot
+        if: github.event_name == 'pull_request'
+        run: |
+          cd public
+          python -m http.server 8080 &
+          cd ..
+          npm install puppeteer
+          node screenshot.js
+
+      - name: Upload screenshots as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshot-*.png
