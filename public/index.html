@@ -143,7 +143,7 @@
               type: "string",
               render: (data, type, row) => {
                 if (type == "display") {
-                  let docHref = metadata.doc_url.replaceAll('${pr}', '${row[0]}');
+                  let docHref = metadata.doc_url.replaceAll('\${pr}', row[0]);
                   docLink = `<a href="${docHref}" target="_blank" title="CI-built documentation">
                                <i class="bi bi-file-earmark-text"></i>
                              </a>`;
