@@ -134,7 +134,7 @@
         return priorityA === priorityB ? a.localeCompare(b) : priorityA - priorityB;
       }
 
-      function createDataTable(id, caption) {
+      function createDataTable(id, caption, showTimeToEngage = false) {
         new DataTable($(`#${id}`), {
           columns: [
             {
@@ -147,7 +147,7 @@
                   docLink = `<a href="${docHref}" target="_blank" title="CI-built documentation">
                                <i class="bi bi-file-earmark-text"></i>
                              </a>`;
-                  return docLink + " " + prLink(row[13], data, data);
+                  return docLink + " " + prLink(row[14], data, data);
                 } else {
                   return data;
                 }
@@ -159,21 +159,21 @@
               responsivePriority: 2,
               render: (data, type, row) => {
                 if (type == "display") {
-                  const link = prLink(row[13], row[0], data);
+                  const link = prLink(row[14], row[0], data);
                   // add orange "R" badge if rebasing is needed, and a red "CI" badge if CI fails
                   let badges = "";
-                  if (!row[8] || row[9]) {
+                  if (!row[9] || row[10]) {
                     // broken CI is red, pending CI is blue
-                    badge_color = row[9] ? "info" : "danger";
+                    badge_color = row[10] ? "info" : "danger";
                     badges += `<span class="badge bg-${badge_color}" title="CI failed / pending">CI</span> `;
                   }
-                  if (row[10]) {
+                  if (row[11]) {
                     badges += `<span class="badge bg-warning text-dark" title="Rebase needed">R</span> `;
                   }
-                  if (row[11]) {
+                  if (row[12]) {
                     badges = `<span class="badge bg-secondary" title="Unknown status">?</span> `;
                   }
-                  if (row[12]) {
+                  if (row[13]) {
                     badges += `<span class="badge bg-success" title="Trivial">T</span> `;
                   }
 
@@ -211,6 +211,24 @@
               responsivePriority: 5,
             },
             { title: "Base", responsivePriority: 200 },
+            ...(showTimeToEngage ? [{
+              title: '<span title="Time to Engage: How long it took for the assignee to first engage with this PR after assignment">TTE</span>',
+              render: (data, type, row) => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const currentUser = urlParams.get("username");
+                const userDelay = (currentUser && data && data[currentUser]) ? data[currentUser] : null;
+
+                if (type === "display") {
+                  if (userDelay !== null) {
+                    return moment.duration(userDelay, "seconds").humanize();
+                  }
+                  return "N/A";
+                }
+                // For sorting, return the raw numeric value (or Infinity for N/A to sort last)
+                return userDelay !== null ? userDelay : Infinity;
+              },
+              responsivePriority: 7,
+            }] : []),
             {
               title: "Updated",
               render: (data, type, row) => (type == "display" ? timeSince(data) : data),
@@ -223,7 +241,7 @@
             { title: "Trivial", visible: false },
             { title: "Repo", visible: false },
           ],
-          order: [[6, "desc"]], // Show most recently updated PRs first
+          order: [[showTimeToEngage ? 7 : 6, "desc"]], // Show most recently updated PRs first
           paging: false,
           info: false,
           responsive: {
@@ -231,7 +249,7 @@
           },
           stateSave: true,
           createdRow: function (row, data, index) {
-            if (data[7] === true) {
+            if (data[showTimeToEngage ? 8 : 7] === true) {
               $(row).addClass("draft");
             }
           },
@@ -253,6 +271,7 @@
             prData.assignee_names,
             prData.reviewer_names,
             `${repo}/${prData.base}`,
+            prData.time_to_engage_after_assignment || {},
             prData.updated_at,
             prData.draft,
             prData.ci_passes,
@@ -265,7 +284,7 @@
 
           dataTable.row.add(row);
         }
-        dataTable.columns.adjust().draw().responsive.recalc();
+        dataTable.columns.adjust().draw(false).responsive.recalc();
         oldCaption = dataTable.caption().split(" (")[0];
         dataTable.caption(oldCaption + ` (${dataTable.rows().count()})`);
       }
@@ -330,9 +349,10 @@
             stats.assignee.length,
             stats.approved.length,
             stats.blocking.length,
+            stats.engagement_score,
           ]);
         });
-        leaderboard.columns.adjust().draw().responsive.recalc();
+        leaderboard.columns.adjust().draw(false).responsive.recalc();
       }
 
       function refreshData() {
@@ -362,7 +382,7 @@
               });
           } else {
             // raw data hasn't changed but redraw table to update "since" columns
-            $(".prs").DataTable().rows().invalidate().draw();
+            $(".prs").DataTable().rows().invalidate().draw(false);
           }
         });
       }
@@ -371,7 +391,7 @@
         const tableConfigs = [
           { id: "author", caption: "Authored" },
           { id: "requested_changes", caption: "Requested changes" },
-          { id: "assignee", caption: "Assigned" },
+          { id: "assignee", caption: "Assigned", showTimeToEngage: true },
           { id: "reviewer", caption: "Reviewer" },
           { id: "approved", caption: "Approved" },
           { id: "previously_approved", caption: "Previously Approved" },
@@ -381,7 +401,7 @@
         ];
 
         tableConfigs.forEach((config) => {
-          createDataTable(config.id, config.caption);
+          createDataTable(config.id, config.caption, config.showTimeToEngage);
         });
 
         // create Leaderboard table (user - assigned PRs - approved PRs - blocked PRs)
@@ -392,6 +412,18 @@
             { title: "Assigned", responsivePriority: 3 },
             { title: "Approved", responsivePriority: 4 },
             { title: "Requested changes", responsivePriority: 5 },
+            {
+              title: "Engagement Score",
+              responsivePriority: 6,
+              render: (data, type, row) => {
+                if (type === "display") {
+                  return data !== null
+                    ? data.toFixed(0)
+                    : "N/A";
+                }
+                return data === null ? -1 : data;
+              },
+            },
           ],
           paging: true,
           info: false,

@@ -125,6 +125,29 @@ query (
               endCursor
             }
           }
+          reviews(first: 50) {
+            nodes {
+              author {
+                login
+              }
+              submittedAt
+            }
+          }
+          assignmentTimelineItems: timelineItems(
+            first: 50
+            itemTypes: [ASSIGNED_EVENT]
+          ) {
+            nodes {
+              ... on AssignedEvent {
+                createdAt
+                assignee {
+                  ... on User {
+                    login
+                  }
+                }
+              }
+            }
+          }
           dismissedReviewsTimelineItems: timelineItems(
             first: 20
             itemTypes: [REVIEW_DISMISSED_EVENT]
