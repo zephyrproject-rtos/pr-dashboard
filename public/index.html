@@ -73,19 +73,33 @@
       metadata = null;
       prs = null;
       lastDatasetUpdate = null;
+      let selectedUsers = []; // Currently selected usernames for filtering
+      let users = {}; // User stats loaded from users.json
 
-      function saveGHUser(name) {
-        localStorage.setItem("gh_user", name);
+      // Store array of usernames in localStorage
+      function saveSelectedUsers(usernames) {
+        localStorage.setItem("gh_users", JSON.stringify(usernames));
       }
 
-      function loadGHUser() {
-        return localStorage.getItem("gh_user");
+      // Load array of usernames from localStorage
+      function loadSelectedUsers() {
+        const saved = localStorage.getItem("gh_users");
+        if (saved) {
+          try {
+            return JSON.parse(saved);
+          } catch (e) {
+            console.error("Failed to parse saved users", e);
+            return [];
+          }
+        }
+        return [];
       }
 
-      function populateAutocomplete(users) {
+      function populateAutocomplete(users, excludeList = []) {
         const datalist = document.getElementById("usernames");
         datalist.innerHTML = "";
         Object.keys(users)
+          .filter((username) => !excludeList.includes(username))
           .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
           .forEach((username) => {
             const option = document.createElement("option");
@@ -310,16 +324,49 @@
         appendData(missingOneApproval, "missing_one_approval");
       }
 
+      function mergeUserStats(usernames, usersData) {
+        const statKeys = [
+          "author",
+          "blocking",
+          "assignee",
+          "reviewer",
+          "approved",
+          "previously_approved",
+          "commented",
+        ];
+        const mergedStats = Object.fromEntries(
+          statKeys.map((key) => [key, new Set()])
+        );
+
+        // Aggregate PRs from all selected users
+        for (const username of usernames) {
+          const userStats = usersData[username];
+          if (!userStats) continue;
+
+          // Add this user's PRs to each stat category
+          for (const key of statKeys) {
+            const prList = userStats[key];
+            if (prList?.length) {
+              prList.forEach((pr) => mergedStats[key].add(pr));
+            }
+          }
+        }
+
+        // Convert deduped sets back to arrays
+        return Object.fromEntries(
+          statKeys.map((key) => [key, Array.from(mergedStats[key])])
+        );
+      }
+
       function processData(data) {
         prs = data[0];
-        const users = data[1];
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get("username");
+        users = data[1];
 
-        if (username && users[username]) {
-          appendUser(users[username]);
+        if (selectedUsers.length > 0) {
+          const merged = mergeUserStats(selectedUsers, users);
+          appendUser(merged);
         }
-        populateAutocomplete(users);
+        populateAutocomplete(users, selectedUsers);
 
         const leaderboard = $("#leaderboard").DataTable();
         leaderboard.clear();
@@ -333,6 +380,95 @@
           ]);
         });
         leaderboard.columns.adjust().draw().responsive.recalc();
+      }
+
+      function updateUserChips() {
+        // Maximum number of visible chips before collapsing into "+N more" popover
+        const maxVisibleChips = 3;
+        const visible = selectedUsers.slice(0, maxVisibleChips);
+        const hidden = selectedUsers.slice(maxVisibleChips);
+
+        // Clear existing chips and repopulate
+        const $container = $("#gh-username-chips");
+        $container.empty();
+
+        visible.forEach((username) => {
+          $container.append(
+            $(`<span class="gh-username-chip">
+                <span>${username}</span>
+                <button type="button" class="gh-username-chip-remove"
+                        data-user="${username}" aria-label="Remove ${username}">
+                  <i class="bi bi-x"></i>
+                </button>
+              </span>`)
+          );
+        });
+
+        if (hidden.length > 0) {
+          const hiddenHtml = hidden
+            .map(
+              (u) =>
+                `<span class="gh-username-chip">
+                  <span>${u}</span>
+                  <button type="button" class="gh-username-chip-remove"
+                          data-user="${u}" aria-label="Remove ${u}">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </span>`
+            )
+            .join("");
+
+          const $moreBtn = $(
+            `<button type="button" class="gh-more-chip"
+                     data-bs-toggle="popover" data-bs-html="true"
+                     title="More users" aria-label="Show ${hidden.length} more users">
+              +${hidden.length} more
+            </button>`
+          );
+          $container.append($moreBtn);
+
+          new bootstrap.Popover($moreBtn[0], {
+            content: `<div class="d-flex flex-wrap gap-2">${hiddenHtml}</div>`,
+            html: true,
+            sanitize: false,
+            trigger: "focus"
+          });
+        }
+
+        // Show/hide clear button based on selected users
+        $("#gh-clear-users").toggleClass("d-none", selectedUsers.length === 0);
+
+        // Update autocomplete to exclude selected users
+        populateAutocomplete(users, selectedUsers);
+      }
+
+      function addUser(username) {
+        if (!users[username]) {
+          return false;
+        }
+        if (!selectedUsers.includes(username)) {
+          selectedUsers.push(username);
+          updateUserChips();
+          updateURL();
+        }
+        return true;
+      }
+
+      function removeUser(username) {
+        selectedUsers = selectedUsers.filter((u) => u !== username);
+        updateUserChips();
+        updateURL(selectedUsers.length === 0);
+      }
+
+      function updateURL(forceClear = false) {
+        if (selectedUsers.length > 0) {
+          const userQuery = selectedUsers.join(",");
+          saveSelectedUsers(selectedUsers);
+          window.location.href = `?username=${userQuery}`;
+        } else if (forceClear) {
+          saveSelectedUsers([]);
+          window.location.href = `?`;
+        }
       }
 
       function refreshData() {
@@ -366,6 +502,31 @@
           }
         });
       }
+
+      function handleUserRemoval(e) {
+        const $button = $(e.target).closest(".gh-username-chip-remove");
+        if ($button.length === 0) return false;
+        e.preventDefault();
+        const username = $button.data("user");
+        if (username) removeUser(username);
+        return true;
+      }
+
+      function handleUserClearAll(e) {
+        const $clearBtn = $(e.target).closest("#gh-clear-users");
+        if ($clearBtn.length === 0) return false;
+        e.preventDefault();
+        selectedUsers = [];
+        updateUserChips();
+        updateURL(true);
+        return true;
+      }
+
+      // Delegate click handlers
+      $(document).on("click", (e) => {
+        if (handleUserRemoval(e)) return;
+        if (handleUserClearAll(e)) return;
+      });
 
       function initTable() {
         const tableConfigs = [
@@ -405,24 +566,58 @@
         }).caption("<i class='bi-trophy'></i> Leaderboard");
 
         const ghUsernameInput = document.getElementById("gh-username-input");
-        ghUsernameInput.value =
-          new URLSearchParams(window.location.search).get("username") || loadGHUser();
-        history.replaceState(null, "", `?username=${ghUsernameInput.value}`);
+        const urlParams = new URLSearchParams(window.location.search);
+        const usernameParam = urlParams.get("username");
 
-        // ENTER key pressed
+        if (usernameParam) {
+          selectedUsers = usernameParam
+            .split(",")
+            .map(u => u.trim())
+            .filter(u => u);
+          saveSelectedUsers(selectedUsers);
+        } else {
+          const savedUsers = loadSelectedUsers();
+          if (savedUsers.length > 0) {
+            selectedUsers = savedUsers;
+            updateURL();
+            return; // Exit early since updateURL() reloads the page
+          }
+        }
+
+        updateUserChips();
+        ghUsernameInput.placeholder = "Enter GitHub username";
+
+        // ENTER key pressed or Backspace on empty to remove last
         ghUsernameInput.addEventListener("keydown", (event) => {
           if (event.key === "Enter") {
+            event.preventDefault();
             const username = ghUsernameInput.value.trim();
-            saveGHUser(username);
-            window.location.href = `?username=${username}`;
+            if (username) {
+              if (addUser(username)) {
+                ghUsernameInput.value = "";
+              } else {
+                ghUsernameInput.classList.add("is-invalid");
+                setTimeout(() => ghUsernameInput.classList.remove("is-invalid"), 1500);
+              }
+            }
+          }
+
+          if (event.key === "Backspace" &&
+              ghUsernameInput.value === "" &&
+              selectedUsers.length) {
+            event.preventDefault();
+            removeUser(selectedUsers[selectedUsers.length - 1]);
           }
         });
 
         // autocomplete entry selection
         ghUsernameInput.addEventListener("change", () => {
           const username = ghUsernameInput.value.trim();
-          saveGHUser(username);
-          window.location.href = `?username=${username}`;
+          if (username && users[username]) {
+            if (addUser(username)) {
+              ghUsernameInput.value = "";
+            }
+          }
         });
 
         refreshData();
@@ -448,17 +643,28 @@
       <div class="spinner-border text-primary" role="status"></div>
     </div>
     <nav id="navbar" class="navbar bg-body-tertiary px-3 mb-3 sticky-top">
-      <div class="container-fluid">
-        <form class="d-flex">
-          <input
-            class="form-controls"
-            id="gh-username-input"
-            type="text"
-            placeholder="Enter GitHub username"
-            list="usernames" />
+      <div class="container-fluid gap-2">
+        <form class="d-flex gap-2">
+          <div class="gh-username-container">
+            <span id="gh-username-chips"></span>
+            <input
+              class="form-controls"
+              id="gh-username-input"
+              type="text"
+              placeholder="Enter GitHub username"
+              autocomplete="off"
+              list="usernames" />
+            <button
+              type="button"
+              id="gh-clear-users"
+              class="gh-clear-btn d-none"
+              title="Clear all users">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
           <datalist id="usernames"></datalist>
         </form>
-        <ul class="nav nav-pills">
+        <ul class="nav nav-pills flex-wrap">
           <li class="nav-item">
             <a class="nav-link" href="#author">Authored</a>
           </li>
@@ -477,7 +683,6 @@
           <li class="nav-item">
             <a class="nav-link" href="#previously_approved">Previously Approved</a>
           </li>
-
           <li class="nav-item">
             <a class="nav-link" href="#commented">Commented</a>
           </li>
