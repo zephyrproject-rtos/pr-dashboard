@@ -76,6 +76,16 @@
       let selectedUsers = []; // Currently selected usernames for filtering
       let users = {}; // User stats loaded from users.json
 
+      const tablesConfig = [
+        { key: "author", tableId: "author", caption: "Authored" },
+        { key: "blocking", tableId: "requested_changes", caption: "Requested changes" },
+        { key: "assignee", tableId: "assignee", caption: "Assigned" },
+        { key: "reviewer", tableId: "reviewer", caption: "Reviewer" },
+        { key: "approved", tableId: "approved", caption: "Approved" },
+        { key: "previously_approved", tableId: "previously_approved", caption: "Previously Approved" },
+        { key: "commented", tableId: "commented", caption: "Commented" },
+      ];
+
       // Store array of usernames in localStorage
       function saveSelectedUsers(usernames) {
         localStorage.setItem("gh_users", JSON.stringify(usernames));
@@ -285,13 +295,9 @@
       }
 
       function appendUser(values) {
-        appendData(values.author, "author");
-        appendData(values.blocking, "requested_changes");
-        appendData(values.assignee, "assignee");
-        appendData(values.reviewer, "reviewer");
-        appendData(values.approved, "approved");
-        appendData(values.previously_approved, "previously_approved");
-        appendData(values.commented, "commented");
+        tablesConfig.forEach((config) => {
+          appendData(values[config.key], config.tableId);
+        });
 
         // find all unassigned manifest repo PRs needing attention
         const unassigned = Object.keys(prs).filter((key) => {
@@ -325,15 +331,7 @@
       }
 
       function mergeUserStats(usernames, usersData) {
-        const statKeys = [
-          "author",
-          "blocking",
-          "assignee",
-          "reviewer",
-          "approved",
-          "previously_approved",
-          "commented",
-        ];
+        const statKeys = tablesConfig.map((c) => c.key);
         const mergedStats = Object.fromEntries(
           statKeys.map((key) => [key, new Set()])
         );
@@ -529,19 +527,14 @@
       });
 
       function initTable() {
-        const tableConfigs = [
-          { id: "author", caption: "Authored" },
-          { id: "requested_changes", caption: "Requested changes" },
-          { id: "assignee", caption: "Assigned" },
-          { id: "reviewer", caption: "Reviewer" },
-          { id: "approved", caption: "Approved" },
-          { id: "previously_approved", caption: "Previously Approved" },
-          { id: "commented", caption: "Commented" },
+        const allTablesConfig = [
+          ...tablesConfig.map((c) => ({ id: c.tableId, caption: c.caption })),
+          // Additional tables for various types of PRs that need attention
           { id: "unassigned", caption: `Unassigned [${metadata.manifest_repo} repo only]` },
           { id: "missing_one_approval", caption: `Needs 1 More Approval [${metadata.manifest_repo} repo only]` },
         ];
 
-        tableConfigs.forEach((config) => {
+        allTablesConfig.forEach((config) => {
           createDataTable(config.id, config.caption);
         });
 
