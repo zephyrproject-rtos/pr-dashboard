@@ -19,6 +19,7 @@ async function takeScreenshot(page, url, index) {
     const urlsToScreenshot = [
         'http://localhost:8080/?username=fabiobaltieri',
         'http://localhost:8080/?username=kartben',
+        'http://localhost:8080/?username=fabiobaltieri,kartben,mmahadevan108,manuargue',
     ];
 
     const browser = await puppeteer.launch({
