@@ -140,7 +140,7 @@
             {
               title: "PR",
               responsivePriority: 100,
-              type: "string",
+              type: "num",
               render: (data, type, row) => {
                 if (type == "display") {
                   let docHref = metadata.doc_url.replaceAll('\${pr}', row[0]);
