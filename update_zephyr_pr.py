@@ -10,6 +10,12 @@ import subprocess
 
 manifest = Manifest.from_file()
 
+
+def repo_name(project):
+    url = project.url.rstrip("/")
+    repo = url.rsplit("/", 1)[-1]
+    return repo.removesuffix(".git") or project.name
+
 repos = [
         "action-manifest",
         "action-zephyr-setup",
@@ -28,7 +34,7 @@ for project in manifest.get_projects([]):
     if isinstance(project, ManifestProject):
         continue
 
-    repos.append(project.name)
+    repos.append(repo_name(project))
 
 repos_arg = ",".join(repos)
 
