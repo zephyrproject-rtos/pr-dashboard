@@ -110,7 +110,11 @@
       }
 
       function prLink(repo, pr, text) {
-        return `<a href="https://github.com/${metadata.org}/${repo}/pull/${pr}">${text}</a>`;
+        const org = encodeURIComponent(metadata.org);
+        const repoSeg = encodeURIComponent(repo);
+        const prSeg = encodeURIComponent(String(pr));
+        const safeText = DataTable.util.escapeHtml(String(text));
+        return `<a href="https://github.com/${org}/${repoSeg}/pull/${prSeg}">${safeText}</a>`;
       }
 
       function userLink(user, internal = true) {
@@ -124,8 +128,11 @@
           user = user.substring(1);
         }
 
-        const href = internal ? `?username=${user}` : `https://github.com/${user}`;
-        return `<a class="${linkClass}" href="${href}">${user}</a>`;
+        const href = internal
+          ? `?username=${encodeURIComponent(user)}`
+          : `https://github.com/${encodeURIComponent(user)}`;
+        const safeUser = DataTable.util.escapeHtml(user);
+        return `<a class="${linkClass}" href="${href}">${safeUser}</a>`;
       }
       function sortUsernames(a, b) {
         const getPriority = (str) => (str.startsWith("-") ? -2 : str.startsWith("+") ? -1 : 0);
@@ -144,7 +151,8 @@
               render: (data, type, row) => {
                 if (type == "display") {
                   let docHref = metadata.doc_url.replaceAll('\${pr}', row[0]);
-                  docLink = `<a href="${docHref}" target="_blank" title="CI-built documentation">
+                  const safeDocHref = DataTable.util.escapeHtml(docHref);
+                  docLink = `<a href="${safeDocHref}" target="_blank" title="CI-built documentation">
                                <i class="bi bi-file-earmark-text"></i>
                              </a>`;
                   return docLink + " " + prLink(row[13], data, data);
@@ -210,7 +218,7 @@
               className: "ellipsis narrow",
               responsivePriority: 5,
             },
-            { title: "Base", responsivePriority: 200 },
+            { title: "Base", responsivePriority: 200, render: DataTable.render.text() },
             {
               title: "Updated",
               render: (data, type, row) => (type == "display" ? timeSince(data) : data),
