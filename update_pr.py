@@ -93,6 +93,9 @@ query (
           createdAt
           updatedAt
           mergeable
+          statusCheckRollup {
+            state
+          }
           author {
             login
           }
@@ -160,15 +163,6 @@ query (
             pageInfo {
               hasNextPage
               endCursor
-            }
-          }
-          commits(last: 1) {
-            nodes {
-              commit {
-                statusCheckRollup {
-                  state
-                }
-              }
             }
           }
           labels(first: 20) {
