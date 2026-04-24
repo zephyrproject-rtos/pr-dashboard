@@ -97,11 +97,10 @@ def main(argv):
         pr.needs_rebase = pr_data["mergeable"] == "CONFLICTING"
         pr.unknown_mergeable_status = pr_data["mergeable"] == "UNKNOWN"
 
-        commits_nodes = pr_data["commits"]["nodes"]
-        if commits_nodes:
-            status_check = commits_nodes[0]["commit"]["statusCheckRollup"]
-            pr.ci_passes = status_check and status_check.get("state") == "SUCCESS"
-            pr.ci_pending = status_check and status_check.get("state") == "PENDING"
+        status_check = pr_data.get("statusCheckRollup")
+        if status_check:
+            pr.ci_passes = status_check.get("state") == "SUCCESS"
+            pr.ci_pending = status_check.get("state") == "PENDING"
 
         # Check for "Trivial" label
         labels = pr_data.get("labels", {}).get("nodes", [])
