@@ -343,6 +343,13 @@
         leaderboard.columns.adjust().draw().responsive.recalc();
       }
 
+      // The "Updated" column renders relative times, which change at most once a minute, so this
+      // runs on its own slower timer rather than on every data poll. draw(false) keeps the
+      // leaderboard on the page the user was reading.
+      function refreshTimestamps() {
+        $(".prs").DataTable().rows().invalidate().draw(false);
+      }
+
       function refreshData() {
         const tsQueryParam = `?ts=${new Date().getTime()}`;
         const urls = ["prs.json", "users.json"].map((url) => `${url}${tsQueryParam}`);
@@ -368,9 +375,6 @@
               .finally(() => {
                 spinner.classList.replace("d-flex", "d-none");
               });
-          } else {
-            // raw data hasn't changed but redraw table to update "since" columns
-            $(".prs").DataTable().rows().invalidate().draw();
           }
         });
       }
@@ -435,6 +439,7 @@
 
         refreshData();
         setInterval(refreshData, 10000);
+        setInterval(refreshTimestamps, 60000);
       }
 
       window.addEventListener("load", () => {
