@@ -138,6 +138,28 @@
         return then.fromNow();
       }
 
+      // compact line counts, e.g. 42, 1.2k, 12k, 2.1M
+      function shortNum(n) {
+        if (n < 1000) return String(n);
+        if (n < 10000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+        if (n < 1000000) return Math.round(n / 1000) + "k";
+        return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+      }
+
+      function plural(n, word) {
+        return `${n} ${word}${n === 1 ? "" : "s"}`;
+      }
+
+      function diffStat(additions, deletions, files) {
+        if (!additions && !deletions && !files) {
+          return `<span class="diffstat empty" title="No changes">&mdash;</span>`;
+        }
+        const title = `${plural(additions, "addition")}, ${plural(deletions, "deletion")} in ${plural(files, "file")}`;
+        return `<span class="diffstat" title="${title}"
+                  ><span class="added">+${shortNum(additions)}</span
+                  ><span class="removed">&minus;${shortNum(deletions)}</span></span>`;
+      }
+
       function approvedCount(count) {
         linkClass = count ? "approved" : "none";
         return `<span class="${linkClass}">${count}</span>`;
@@ -194,7 +216,7 @@
                   docLink = `<a href="${safeDocHref}" target="_blank" title="CI-built documentation">
                                <i class="bi bi-file-earmark-text"></i>
                              </a>`;
-                  return docLink + " " + prLink(row[13], data, data);
+                  return docLink + " " + prLink(row[14], data, data);
                 } else {
                   return data;
                 }
@@ -206,21 +228,21 @@
               responsivePriority: 2,
               render: (data, type, row) => {
                 if (type == "display") {
-                  const link = prLink(row[13], row[0], data);
+                  const link = prLink(row[14], row[0], data);
                   // add orange "R" badge if rebasing is needed, and a red "CI" badge if CI fails
                   let badges = "";
-                  if (!row[8] || row[9]) {
+                  if (!row[9] || row[10]) {
                     // broken CI is red, pending CI is blue
-                    badge_color = row[9] ? "info" : "danger";
+                    badge_color = row[10] ? "info" : "danger";
                     badges += `<span class="badge bg-${badge_color}" title="CI failed / pending">CI</span> `;
                   }
-                  if (row[10]) {
+                  if (row[11]) {
                     badges += `<span class="badge bg-warning text-dark" title="Rebase needed">R</span> `;
                   }
-                  if (row[11]) {
+                  if (row[12]) {
                     badges = `<span class="badge bg-secondary" title="Unknown status">?</span> `;
                   }
-                  if (row[12]) {
+                  if (row[13]) {
                     badges += `<span class="badge bg-success" title="Trivial">T</span> `;
                   }
 
@@ -257,6 +279,15 @@
               className: "ellipsis narrow",
               responsivePriority: 5,
             },
+            {
+              // sorts on the total number of changed lines, held in the row data
+              title: "Changes",
+              className: "nowrap",
+              type: "num",
+              responsivePriority: 3,
+              render: (data, type, row) =>
+                type == "display" ? diffStat(row[15], row[16], row[17]) : data,
+            },
             { title: "Base", responsivePriority: 200, render: DataTable.render.text() },
             {
               title: "Updated",
@@ -265,12 +296,16 @@
             },
             { title: "Status", visible: false },
             { title: "CI Passes", visible: false },
+            { title: "CI Pending", visible: false },
             { title: "Rebase needed", visible: false },
             { title: "Unknown mergeable status", visible: false },
             { title: "Trivial", visible: false },
             { title: "Repo", visible: false },
+            { title: "Additions", visible: false },
+            { title: "Deletions", visible: false },
+            { title: "Files changed", visible: false },
           ],
-          order: [[6, "desc"]], // Show most recently updated PRs first
+          order: [[7, "desc"]], // Show most recently updated PRs first
           paging: false,
           info: false,
           responsive: {
@@ -278,7 +313,7 @@
           },
           stateSave: true,
           createdRow: function (row, data, index) {
-            if (data[7] === true) {
+            if (data[8] === true) {
               $(row).addClass("draft");
             }
           },
@@ -306,6 +341,7 @@
             prData.author,
             prData.assignee_names,
             prData.reviewer_names,
+            prData.additions + prData.deletions,
             `${repo}/${prData.base}`,
             prData.updated_at,
             prData.draft,
@@ -315,6 +351,9 @@
             prData.unknown_mergeable_status,
             prData.trivial,
             repo,
+            prData.additions,
+            prData.deletions,
+            prData.changed_files,
           ];
 
           dataTable.row.add(row);
