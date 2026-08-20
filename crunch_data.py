@@ -44,6 +44,9 @@ class PR:
     blocked: int = 0
     created_at: str = None
     updated_at: str = None
+    additions: int = 0
+    deletions: int = 0
+    changed_files: int = 0
     draft: bool = False
     mergeable: bool = True
     unknown_mergeable_status: bool = False
@@ -91,6 +94,9 @@ def main(argv):
         pr.base = pr_data["baseRefName"]
         pr.created_at = pr_data["createdAt"]
         pr.updated_at = pr_data["updatedAt"]
+        pr.additions = pr_data.get("additions", 0)
+        pr.deletions = pr_data.get("deletions", 0)
+        pr.changed_files = pr_data.get("changedFiles", 0)
         pr.draft = pr_data["isDraft"]
 
         pr.mergeable = pr_data["mergeable"] == "MERGEABLE"

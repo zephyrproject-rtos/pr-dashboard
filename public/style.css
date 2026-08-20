@@ -84,3 +84,30 @@ a.blocked {
   position: absolute;
   right: 2em;
 }
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.diffstat {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95em;
+}
+
+.diffstat .added,
+.diffstat .removed {
+  font-weight: 500;
+}
+
+.diffstat .added {
+  color: var(--bs-form-valid-color);
+}
+
+.diffstat .removed {
+  color: var(--bs-form-invalid-color);
+  margin-left: 0.4em;
+}
+
+.diffstat.empty {
+  opacity: 0.4;
+}

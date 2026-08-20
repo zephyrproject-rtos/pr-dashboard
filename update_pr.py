@@ -92,6 +92,9 @@ query (
           baseRefName
           createdAt
           updatedAt
+          additions
+          deletions
+          changedFiles
           mergeable
           statusCheckRollup {
             state
