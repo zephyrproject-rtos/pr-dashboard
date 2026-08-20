@@ -72,6 +72,8 @@
 
       metadata = null;
       prs = null;
+      users = null;
+      currentUser = null;
       lastDatasetUpdate = null;
 
       function saveGHUser(name) {
@@ -80,6 +82,43 @@
 
       function loadGHUser() {
         return localStorage.getItem("gh_user");
+      }
+
+      function saveHideNoop(hide) {
+        localStorage.setItem("hide_noop_prs", hide ? "1" : "0");
+      }
+
+      function loadHideNoop() {
+        return localStorage.getItem("hide_noop_prs") === "1";
+      }
+
+      function hideNoopEnabled() {
+        return document.getElementById("hide-noop-prs").checked;
+      }
+
+      // PRs the selected user has nothing left to add to: their own PRs, and PRs they already
+      // reviewed (approved, or requested changes and are now waiting on the author).
+      function alreadyCovered(key, prData) {
+        const me = users ? users[currentUser] : null;
+        if (!me) {
+          return false;
+        }
+        return (
+          prData.author === currentUser ||
+          me.approved.includes(key) ||
+          me.blocking.includes(key)
+        );
+      }
+
+      // A PR that is one approval short but whose *assignee* is the one still to approve: anybody
+      // else's +1 won't make it mergeable. The author can't approve their own PR, so an author who
+      // is also the assignee doesn't count as a pending approver.
+      function needsAssigneeApproval(prData) {
+        if (prData.assignee_approved > 0) {
+          return false;
+        }
+        const pending = prData.assignee_names.filter((name) => name !== prData.author);
+        return pending.length > 0 && !pending.includes(currentUser);
       }
 
       function populateAutocomplete(users) {
@@ -246,12 +285,19 @@
         }).caption(caption);
       }
 
-      function appendData(values, tableId) {
+      function appendData(values, tableId, hideFilter = null) {
         const dataTable = $(`#${tableId}`).DataTable();
         dataTable.clear();
 
+        const hide = hideFilter !== null && hideNoopEnabled();
+        let hidden = 0;
+
         for (const key of values.sort().reverse()) {
           const prData = prs[key];
+          if (hide && hideFilter(key, prData)) {
+            hidden++;
+            continue;
+          }
           const repo = key.split("/")[0];
           const pr = key.split("/")[1];
           const row = [
@@ -275,18 +321,27 @@
         }
         dataTable.columns.adjust().draw().responsive.recalc();
         oldCaption = dataTable.caption().split(" (")[0];
-        dataTable.caption(oldCaption + ` (${dataTable.rows().count()})`);
+        const count = dataTable.rows().count();
+        dataTable.caption(oldCaption + (hidden ? ` (${count}, ${hidden} hidden)` : ` (${count})`));
       }
 
       function appendUser(values) {
+        // "Authored" is the selected user's own work queue rather than review work, so it is the
+        // one table the switch never touches.
         appendData(values.author, "author");
-        appendData(values.blocking, "requested_changes");
-        appendData(values.assignee, "assignee");
-        appendData(values.reviewer, "reviewer");
-        appendData(values.approved, "approved");
-        appendData(values.previously_approved, "previously_approved");
-        appendData(values.commented, "commented");
+        appendData(values.blocking, "requested_changes", alreadyCovered);
+        appendData(values.assignee, "assignee", alreadyCovered);
+        appendData(values.reviewer, "reviewer", alreadyCovered);
+        appendData(values.approved, "approved", alreadyCovered);
+        appendData(values.previously_approved, "previously_approved", alreadyCovered);
+        appendData(values.commented, "commented", alreadyCovered);
 
+        appendAttentionTables();
+      }
+
+      // Tables listing PRs from the whole manifest repo rather than PRs the selected user is
+      // already tied to, so they are rebuilt from scratch on every refresh and on every toggle.
+      function appendAttentionTables() {
         // find all unassigned manifest repo PRs needing attention
         const unassigned = Object.keys(prs).filter((key) => {
           const prData = prs[key];
@@ -297,7 +352,7 @@
           }
           return prData.assignee_names.length === 0 && !prData.draft;
         });
-        appendData(unassigned, "unassigned");
+        appendData(unassigned, "unassigned", alreadyCovered);
 
         // find all manifest repo PRs were only the assignee has approved (and no one else) and where no
         // one as blocked, or PRs with only one approval where author is one of the assignees
@@ -315,17 +370,20 @@
             return prData.assignee_approved === 1 && prData.blocked === 0 && prData.approved === 0;
           }
         });
-        appendData(missingOneApproval, "missing_one_approval");
+        appendData(
+          missingOneApproval,
+          "missing_one_approval",
+          (key, prData) => alreadyCovered(key, prData) || needsAssigneeApproval(prData)
+        );
       }
 
       function processData(data) {
         prs = data[0];
-        const users = data[1];
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get("username");
+        users = data[1];
+        currentUser = new URLSearchParams(window.location.search).get("username");
 
-        if (username && users[username]) {
-          appendUser(users[username]);
+        if (currentUser && users[currentUser]) {
+          appendUser(users[currentUser]);
         }
         populateAutocomplete(users);
 
@@ -433,6 +491,18 @@
           window.location.href = `?username=${username}`;
         });
 
+        // the "can't help move forward" switch: only meaningful once a username is known
+        const hideNoopInput = document.getElementById("hide-noop-prs");
+        hideNoopInput.checked = loadHideNoop();
+        hideNoopInput.disabled = !ghUsernameInput.value;
+        hideNoopInput.addEventListener("change", () => {
+          saveHideNoop(hideNoopInput.checked);
+          // same condition under which the tables get populated in the first place
+          if (users && users[currentUser]) {
+            appendUser(users[currentUser]);
+          }
+        });
+
         refreshData();
         setInterval(refreshData, 10000);
       }
@@ -465,6 +535,15 @@
             placeholder="Enter GitHub username"
             list="usernames" />
           <datalist id="usernames"></datalist>
+          <div class="form-check form-switch ms-3 align-self-center">
+            <input class="form-check-input" type="checkbox" role="switch" id="hide-noop-prs" />
+            <label
+              class="form-check-label text-nowrap"
+              for="hide-noop-prs"
+              title="Hide the PRs where the selected user's input wouldn't change anything: their own PRs, PRs they have already reviewed, and PRs still waiting on their assignee's approval. The &quot;Authored&quot; list is never filtered.">
+              Hide PRs this user can't help move forward
+            </label>
+          </div>
         </form>
         <ul class="nav nav-pills">
           <li class="nav-item">
