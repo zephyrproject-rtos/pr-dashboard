@@ -76,6 +76,7 @@
       currentUser = null;
       lastDatasetUpdate = null;
       datasetIncomplete = false;
+      refreshInFlight = false;
 
       function saveGHUser(name) {
         localStorage.setItem("gh_user", name);
@@ -458,6 +459,9 @@
       }
 
       function refreshData() {
+        if (refreshInFlight) {
+          return;
+        }
         const tsQueryParam = `?ts=${new Date().getTime()}`;
         const urls = ["prs.json", "users.json"].map((url) => `${url}${tsQueryParam}`);
 
@@ -471,6 +475,7 @@
           if (lastDatasetUpdate === null || moment(d).isAfter(lastDatasetUpdate)) {
             const spinner = document.getElementById("spinner-overlay");
             spinner.classList.replace("d-none", "d-flex");
+            refreshInFlight = true;
             Promise.all(urls.map((url) => fetch(url).then((res) => res.json())))
               .then((data) => {
                 if (processData(data)) {
@@ -483,6 +488,7 @@
                 console.error("Error refreshing data:", error);
               })
               .finally(() => {
+                refreshInFlight = false;
                 spinner.classList.replace("d-flex", "d-none");
               });
           }
