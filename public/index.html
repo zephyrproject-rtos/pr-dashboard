@@ -75,6 +75,7 @@
       users = null;
       currentUser = null;
       lastDatasetUpdate = null;
+      datasetIncomplete = false;
 
       function saveGHUser(name) {
         localStorage.setItem("gh_user", name);
@@ -329,6 +330,10 @@
 
         for (const key of values.sort().reverse()) {
           const prData = prs[key];
+          if (!prData) {
+            datasetIncomplete = true;
+            continue;
+          }
           if (hide && hideFilter(key, prData)) {
             hidden++;
             continue;
@@ -416,9 +421,12 @@
         );
       }
 
+      // prs.json and users.json are fetched separately, so a refresh landing on a dataset update
+      // can pair the two files from different versions. Returns false when that happened.
       function processData(data) {
         prs = data[0];
         users = data[1];
+        datasetIncomplete = false;
         currentUser = new URLSearchParams(window.location.search).get("username");
 
         if (currentUser && users[currentUser]) {
@@ -438,6 +446,8 @@
           ]);
         });
         leaderboard.columns.adjust().draw().responsive.recalc();
+
+        return !datasetIncomplete;
       }
 
       // The "Updated" column renders relative times, which change at most once a minute, so this
@@ -463,8 +473,11 @@
             spinner.classList.replace("d-none", "d-flex");
             Promise.all(urls.map((url) => fetch(url).then((res) => res.json())))
               .then((data) => {
-                lastDatasetUpdate = d;
-                processData(data);
+                if (processData(data)) {
+                  lastDatasetUpdate = d;
+                } else {
+                  console.warn("prs.json and users.json are out of sync, retrying on next poll");
+                }
               })
               .catch((error) => {
                 console.error("Error refreshing data:", error);
