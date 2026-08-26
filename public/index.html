@@ -120,7 +120,7 @@
         return pending.length > 0 && !pending.includes(currentUser);
       }
 
-      function populateAutocomplete(users) {
+      function populateAutocomplete() {
         const datalist = document.getElementById("usernames");
         datalist.innerHTML = "";
         Object.keys(users)
@@ -430,7 +430,7 @@
         if (currentUser && users[currentUser]) {
           appendUser(users[currentUser]);
         }
-        populateAutocomplete(users);
+        populateAutocomplete();
 
         const leaderboard = $("#leaderboard").DataTable();
         leaderboard.clear();
