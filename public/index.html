@@ -98,18 +98,15 @@
         return document.getElementById("hide-noop-prs").checked;
       }
 
-      // PRs the selected user has nothing left to add to: their own PRs, and PRs they already
-      // reviewed (approved, or requested changes and are now waiting on the author).
+      // PRs the selected user has nothing left to add to: their own PRs, and PRs they have
+      // already approved. PRs they requested changes on stay visible: the author pushing a fix
+      // puts the ball back in their court, so those are still theirs to move forward.
       function alreadyCovered(key, prData) {
         const me = users ? users[currentUser] : null;
         if (!me) {
           return false;
         }
-        return (
-          prData.author === currentUser ||
-          me.approved.includes(key) ||
-          me.blocking.includes(key)
-        );
+        return prData.author === currentUser || me.approved.includes(key);
       }
 
       // A PR that is one approval short but whose *assignee* is the one still to approve: anybody
@@ -603,7 +600,7 @@
             <label
               class="form-check-label text-nowrap"
               for="hide-noop-prs"
-              title="Hide the PRs where the selected user's input wouldn't change anything: their own PRs, PRs they have already reviewed, and PRs still waiting on their assignee's approval. The &quot;Authored&quot; list is never filtered.">
+              title="Hide the PRs where the selected user's input wouldn't change anything: their own PRs, PRs they have already approved, and PRs still waiting on their assignee's approval. The &quot;Authored&quot; list is never filtered.">
               Hide PRs this user can't help move forward
             </label>
           </div>
