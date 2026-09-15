@@ -81,7 +81,7 @@
       metadata = null;
       prs = null;
       users = null;
-      currentUser = null;
+      currentUsers = [];
       lastDatasetUpdate = null;
       datasetIncomplete = false;
       refreshInFlight = false;
@@ -92,6 +92,14 @@
 
       function loadGHUser() {
         return localStorage.getItem("gh_user");
+      }
+
+      // input box takes a list of usernames separated by spaces and/or commas
+      function parseUsernames(value) {
+        return (value || "")
+          .split(/[\s,]+/)
+          .map((name) => name.trim())
+          .filter(Boolean);
       }
 
       function saveHideNoop(hide) {
@@ -118,11 +126,10 @@
       // already approved. PRs they requested changes on stay visible: the author pushing a fix
       // puts the ball back in their court, so those are still theirs to move forward.
       function alreadyCovered(key, prData) {
-        const me = users ? users[currentUser] : null;
-        if (!me) {
-          return false;
-        }
-        return prData.author === currentUser || me.approved.includes(key);
+        return (
+          currentUsers.includes(prData.author) ||
+          currentUsers.some((name) => users[name] && users[name].approved.includes(key))
+        );
       }
 
       // A PR that is one approval short but whose *assignee* is the one still to approve: anybody
@@ -133,7 +140,7 @@
           return false;
         }
         const pending = prData.assignee_names.filter((name) => name !== prData.author);
-        return pending.length > 0 && !pending.includes(currentUser);
+        return pending.length > 0 && !pending.some((name) => currentUsers.includes(name));
       }
 
       function populateAutocomplete() {
@@ -383,6 +390,32 @@
         dataTable.caption(oldCaption + (hidden ? ` (${count}, ${hidden} hidden)` : ` (${count})`));
       }
 
+      // merges the per-user stat arrays of every matched username into one deduplicated set,
+      // so a PR shared by several selected users only shows up once per table.
+      function mergedUserValues(names) {
+        const categories = [
+          "author",
+          "blocking",
+          "assignee",
+          "reviewer",
+          "approved",
+          "previously_approved",
+          "commented",
+        ];
+        const merged = {};
+        categories.forEach((category) => {
+          const keys = new Set();
+          names.forEach((name) => {
+            const stats = users[name];
+            if (stats) {
+              stats[category].forEach((key) => keys.add(key));
+            }
+          });
+          merged[category] = Array.from(keys);
+        });
+        return merged;
+      }
+
       function appendUser(values) {
         // "Authored" is the selected user's own work queue rather than review work, so it is the
         // one table the switch never touches.
@@ -441,10 +474,11 @@
         prs = data[0];
         users = data[1];
         datasetIncomplete = false;
-        currentUser = new URLSearchParams(window.location.search).get("username");
+        currentUsers = parseUsernames(new URLSearchParams(window.location.search).get("username"));
 
-        if (currentUser && users[currentUser]) {
-          appendUser(users[currentUser]);
+        const knownUsers = currentUsers.filter((name) => users[name]);
+        if (knownUsers.length) {
+          appendUser(mergedUserValues(knownUsers));
         }
         populateAutocomplete();
 
@@ -548,14 +582,14 @@
         const ghUsernameInput = document.getElementById("gh-username-input");
         ghUsernameInput.value =
           new URLSearchParams(window.location.search).get("username") || loadGHUser();
-        history.replaceState(null, "", `?username=${ghUsernameInput.value}`);
+        history.replaceState(null, "", `?username=${encodeURIComponent(ghUsernameInput.value)}`);
 
         // ENTER key pressed
         ghUsernameInput.addEventListener("keydown", (event) => {
           if (event.key === "Enter") {
             const username = ghUsernameInput.value.trim();
             saveGHUser(username);
-            window.location.href = `?username=${username}`;
+            window.location.href = `?username=${encodeURIComponent(username)}`;
           }
         });
 
@@ -563,7 +597,7 @@
         ghUsernameInput.addEventListener("change", () => {
           const username = ghUsernameInput.value.trim();
           saveGHUser(username);
-          window.location.href = `?username=${username}`;
+          window.location.href = `?username=${encodeURIComponent(username)}`;
         });
 
         // the "can't help move forward" switch: only meaningful once a username is known
@@ -573,8 +607,9 @@
         hideNoopInput.addEventListener("change", () => {
           saveHideNoop(hideNoopInput.checked);
           // same condition under which the tables get populated in the first place
-          if (users && users[currentUser]) {
-            appendUser(users[currentUser]);
+          const knownUsers = users ? currentUsers.filter((name) => users[name]) : [];
+          if (knownUsers.length) {
+            appendUser(mergedUserValues(knownUsers));
           }
         });
 
@@ -608,7 +643,7 @@
             class="form-controls"
             id="gh-username-input"
             type="text"
-            placeholder="Enter GitHub username"
+            placeholder="Enter GitHub username(s)"
             list="usernames" />
           <datalist id="usernames"></datalist>
           <div class="form-check form-switch ms-3 align-self-center">
