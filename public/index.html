@@ -59,14 +59,22 @@
         const getPreferredTheme = () => {
           return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         };
+        const activeTheme = () => loadTheme() || getPreferredTheme();
 
         const setTheme = (theme) => {
           document.documentElement.setAttribute("data-bs-theme", theme);
         };
 
-        setTheme(getPreferredTheme());
-        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-          setTheme(getPreferredTheme());
+        setTheme(activeTheme());
+
+        document.addEventListener("DOMContentLoaded", () => {
+          const darkModeInput = document.getElementById("dark-mode-switch");
+          darkModeInput.checked = activeTheme() === "dark";
+          darkModeInput.addEventListener("change", () => {
+            const theme = darkModeInput.checked ? "dark" : "light";
+            saveTheme(theme);
+            setTheme(theme);
+          });
         });
       })();
 
@@ -92,6 +100,14 @@
 
       function loadHideNoop() {
         return localStorage.getItem("hide_noop_prs") === "1";
+      }
+
+      function saveTheme(theme) {
+        localStorage.setItem("theme", theme);
+      }
+
+      function loadTheme() {
+        return localStorage.getItem("theme");
       }
 
       function hideNoopEnabled() {
@@ -602,6 +618,16 @@
               for="hide-noop-prs"
               title="Hide the PRs where the selected user's input wouldn't change anything: their own PRs, PRs they have already approved, and PRs still waiting on their assignee's approval. The &quot;Authored&quot; list is never filtered.">
               Hide PRs this user can't help move forward
+            </label>
+          </div>
+          <div class="form-check form-switch ms-3 align-self-center">
+            <input class="form-check-input" type="checkbox" role="switch" id="dark-mode-switch" />
+            <label
+              class="form-check-label text-nowrap"
+              for="dark-mode-switch"
+              title="Switch between light and dark mode.">
+              <i class="bi bi-moon-stars-fill"></i>
+              Dark mode
             </label>
           </div>
         </form>
