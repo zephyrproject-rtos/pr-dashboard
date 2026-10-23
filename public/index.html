@@ -390,7 +390,9 @@
 
           dataTable.row.add(row);
         }
-        dataTable.columns.adjust().draw().responsive.recalc();
+        // columns.adjust() also makes Responsive re-measure the table, which clones every row, so
+        // run it once, after the draw, when the new rows are actually in the table.
+        dataTable.draw().columns.adjust();
         oldCaption = dataTable.caption().split(" (")[0];
         const count = dataTable.rows().count();
         dataTable.caption(oldCaption + (hidden ? ` (${count}, ${hidden} hidden)` : ` (${count})`));
@@ -499,7 +501,7 @@
             stats.blocking.length,
           ]);
         });
-        leaderboard.columns.adjust().draw().responsive.recalc();
+        leaderboard.draw().columns.adjust();
 
         return !datasetIncomplete;
       }
