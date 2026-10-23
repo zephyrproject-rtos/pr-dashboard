@@ -43,18 +43,17 @@ a.blocked {
   color: var(--bs-form-invalid-color);
 }
 
-.ellipsis {
+/* PR tables size their columns from the column definitions, not the content (see
+   createDataTable()), and cut whatever doesn't fit */
+table.fixed-layout {
+  table-layout: fixed;
+}
+
+table.fixed-layout th,
+table.fixed-layout td {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.narrow {
-  max-width: 150px;
-}
-
-.wide {
-  max-width: 400px;
 }
 
 .prs tr.draft {
@@ -83,10 +82,6 @@ a.blocked {
 .dt-search {
   position: absolute;
   right: 2em;
-}
-
-.nowrap {
-  white-space: nowrap;
 }
 
 .diffstat {

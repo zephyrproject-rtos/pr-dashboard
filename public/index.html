@@ -224,12 +224,30 @@
         return priorityA === priorityB ? a.localeCompare(b) : priorityA - priorityB;
       }
 
+      // PR tables use a fixed layout: column widths come from the column definitions rather than
+      // from the content, so neither the browser nor DataTables/Responsive have to measure every
+      // row (which made rebuilding a table with hundreds of rows take seconds). Title takes
+      // whatever width is left. Responsive drops columns at fixed window widths, chosen to keep the
+      // title around 300px wide, in the order it used to drop them: Base, PR, Updated, Reviewers,
+      // Assignee, Changes, Author. A column is visible at its min-<name> breakpoint and wider.
+      const prTableBreakpoints = [
+        { name: "full", width: Infinity },
+        { name: "nobase", width: 1180 },
+        { name: "nopr", width: 990 },
+        { name: "noupdated", width: 860 },
+        { name: "noreviewers", width: 685 },
+        { name: "noassignee", width: 570 },
+        { name: "nochanges", width: 495 },
+        { name: "noauthor", width: 385 },
+      ];
+
       function createDataTable(id, caption) {
-        new DataTable($(`#${id}`), {
+        new DataTable($(`#${id}`).addClass("fixed-layout"), {
           columns: [
             {
               title: "PR",
-              responsivePriority: 100,
+              className: "min-nobase",
+              width: "80px",
               type: "num",
               render: (data, type, row) => {
                 if (type == "display") {
@@ -246,8 +264,7 @@
             },
             {
               title: "Title",
-              className: "ellipsis wide",
-              responsivePriority: 2,
+              className: "all",
               render: (data, type, row) => {
                 if (type == "display") {
                   const link = prLink(row[14], row[0], data);
@@ -276,7 +293,8 @@
             {
               title: "Author",
               render: (data, type, row) => (type == "display" ? userLink(data) : data),
-              responsivePriority: 3,
+              className: "min-nochanges",
+              width: "10%",
             },
             {
               title: "Assignee",
@@ -287,7 +305,8 @@
                       .map((user) => userLink(user))
                       .join(", ")
                   : data,
-              responsivePriority: 4,
+              className: "min-noreviewers",
+              width: "13%",
             },
             {
               title: "Reviewers",
@@ -298,19 +317,24 @@
                       .map((user) => userLink(user))
                       .join(", ")
                   : data,
-              className: "ellipsis narrow",
-              responsivePriority: 5,
+              className: "min-noupdated",
+              width: "14%",
             },
             {
               // sorts on the total number of changed lines, held in the row data
               title: "Changes",
-              className: "nowrap",
+              className: "min-noassignee",
+              width: "100px",
               type: "num",
-              responsivePriority: 3,
               render: (data, type, row) =>
                 type == "display" ? diffStat(row[15], row[16], row[17]) : data,
             },
-            { title: "Base", responsivePriority: 200, render: DataTable.render.text() },
+            {
+              title: "Base",
+              className: "min-full",
+              width: "11%",
+              render: DataTable.render.text(),
+            },
             {
               title: "Updated",
               render: (data, type, row) => {
@@ -320,24 +344,27 @@
                 }
                 return data;
               },
-              responsivePriority: 6,
+              className: "min-nopr",
+              width: "110px",
             },
-            { title: "Status", visible: false },
-            { title: "CI Passes", visible: false },
-            { title: "CI Pending", visible: false },
-            { title: "Rebase needed", visible: false },
-            { title: "Unknown mergeable status", visible: false },
-            { title: "Trivial", visible: false },
-            { title: "Repo", visible: false },
-            { title: "Additions", visible: false },
-            { title: "Deletions", visible: false },
-            { title: "Files changed", visible: false },
+            { title: "Status", visible: false, className: "never" },
+            { title: "CI Passes", visible: false, className: "never" },
+            { title: "CI Pending", visible: false, className: "never" },
+            { title: "Rebase needed", visible: false, className: "never" },
+            { title: "Unknown mergeable status", visible: false, className: "never" },
+            { title: "Trivial", visible: false, className: "never" },
+            { title: "Repo", visible: false, className: "never" },
+            { title: "Additions", visible: false, className: "never" },
+            { title: "Deletions", visible: false, className: "never" },
+            { title: "Files changed", visible: false, className: "never" },
           ],
           order: [[7, "desc"]], // Show most recently updated PRs first
           paging: false,
           info: false,
+          autoWidth: false, // use the widths above as they are
           responsive: {
             details: false,
+            breakpoints: prTableBreakpoints,
           },
           stateSave: true,
           createdRow: function (row, data, index) {
@@ -390,9 +417,8 @@
 
           dataTable.row.add(row);
         }
-        // columns.adjust() also makes Responsive re-measure the table, which clones every row, so
-        // run it once, after the draw, when the new rows are actually in the table.
-        dataTable.draw().columns.adjust();
+        // Responsive hides the right cells as rows get created, so there's nothing to re-measure
+        dataTable.draw();
         oldCaption = dataTable.caption().split(" (")[0];
         const count = dataTable.rows().count();
         dataTable.caption(oldCaption + (hidden ? ` (${count}, ${hidden} hidden)` : ` (${count})`));
@@ -626,6 +652,13 @@
         refreshData();
         setInterval(refreshData, 10000);
         setInterval(refreshTimestamps, 60000);
+
+        // with autoWidth off DataTables no longer reacts to window resizes, so tell Responsive
+        // to pick the breakpoint for the new width (cheap, nothing gets measured)
+        window.addEventListener(
+          "resize",
+          DataTable.util.throttle(() => $("table.prs").DataTable().responsive.recalc())
+        );
       }
 
       window.addEventListener("load", () => {
