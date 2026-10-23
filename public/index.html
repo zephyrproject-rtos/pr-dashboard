@@ -313,7 +313,13 @@
             { title: "Base", responsivePriority: 200, render: DataTable.render.text() },
             {
               title: "Updated",
-              render: (data, type, row) => (type == "display" ? timeSince(data) : data),
+              render: (data, type, row) => {
+                if (type == "display") {
+                  const ts = DataTable.util.escapeHtml(String(data));
+                  return `<time class="timeago" datetime="${ts}">${timeSince(data)}</time>`;
+                }
+                return data;
+              },
               responsivePriority: 6,
             },
             { title: "Status", visible: false },
@@ -499,10 +505,12 @@
       }
 
       // The "Updated" column renders relative times, which change at most once a minute, so this
-      // runs on its own slower timer rather than on every data poll. draw(false) keeps the
-      // leaderboard on the page the user was reading.
+      // runs on its own slower timer rather than on every data poll. Only the text of the <time>
+      // elements changes: invalidating the rows instead would re-render every cell of every table.
       function refreshTimestamps() {
-        $(".prs").DataTable().rows().invalidate().draw(false);
+        document.querySelectorAll("time.timeago").forEach((el) => {
+          el.textContent = timeSince(el.dateTime);
+        });
       }
 
       function refreshData() {
