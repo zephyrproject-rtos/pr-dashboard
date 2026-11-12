@@ -110,6 +110,14 @@
         return localStorage.getItem("hide_noop_prs") === "1";
       }
 
+      function saveHideDrafts(hide) {
+        localStorage.setItem("hide_drafts", hide ? "1" : "0");
+      }
+
+      function loadHideDrafts() {
+        return localStorage.getItem("hide_drafts") === "1";
+      }
+
       function saveTheme(theme) {
         localStorage.setItem("theme", theme);
       }
@@ -120,6 +128,10 @@
 
       function hideNoopEnabled() {
         return document.getElementById("hide-noop-prs").checked;
+      }
+
+      function hideDraftsEnabled() {
+        return document.getElementById("hide-drafts").checked;
       }
 
       // PRs the selected user has nothing left to add to: their own PRs, and PRs they have
@@ -380,6 +392,7 @@
         dataTable.clear();
 
         const hide = hideFilter !== null && hideNoopEnabled();
+        const hideDrafts = hideDraftsEnabled();
         let hidden = 0;
 
         for (const key of values.sort().reverse()) {
@@ -388,7 +401,7 @@
             datasetIncomplete = true;
             continue;
           }
-          if (hide && hideFilter(key, prData)) {
+          if ((hideDrafts && prData.draft) || (hide && hideFilter(key, prData))) {
             hidden++;
             continue;
           }
@@ -452,7 +465,7 @@
 
       function appendUser(values) {
         // "Authored" is the selected user's own work queue rather than review work, so it is the
-        // one table the switch never touches.
+        // one table the "can't help move forward" switch never touches.
         appendData(values.author, "author");
         appendData(values.blocking, "requested_changes", alreadyCovered);
         appendData(values.assignee, "assignee", alreadyCovered);
@@ -636,17 +649,30 @@
           window.location.href = `?username=${encodeURIComponent(username)}`;
         });
 
+        // rebuilds the PR tables after a filter switch has been toggled
+        const refilterTables = () => {
+          // same condition under which the tables get populated in the first place
+          const knownUsers = users ? currentUsers.filter((name) => users[name]) : [];
+          if (knownUsers.length) {
+            appendUser(mergedUserValues(knownUsers));
+          }
+        };
+
         // the "can't help move forward" switch: only meaningful once a username is known
         const hideNoopInput = document.getElementById("hide-noop-prs");
         hideNoopInput.checked = loadHideNoop();
         hideNoopInput.disabled = !ghUsernameInput.value;
         hideNoopInput.addEventListener("change", () => {
           saveHideNoop(hideNoopInput.checked);
-          // same condition under which the tables get populated in the first place
-          const knownUsers = users ? currentUsers.filter((name) => users[name]) : [];
-          if (knownUsers.length) {
-            appendUser(mergedUserValues(knownUsers));
-          }
+          refilterTables();
+        });
+
+        // the drafts switch applies to every PR table, "Authored" included
+        const hideDraftsInput = document.getElementById("hide-drafts");
+        hideDraftsInput.checked = loadHideDrafts();
+        hideDraftsInput.addEventListener("change", () => {
+          saveHideDrafts(hideDraftsInput.checked);
+          refilterTables();
         });
 
         refreshData();
@@ -696,6 +722,15 @@
               for="hide-noop-prs"
               title="Hide the PRs where the selected user's input wouldn't change anything: their own PRs, PRs they have already approved, and PRs still waiting on their assignee's approval. The &quot;Authored&quot; list is never filtered.">
               Hide PRs this user can't help move forward
+            </label>
+          </div>
+          <div class="form-check form-switch ms-3 align-self-center">
+            <input class="form-check-input" type="checkbox" role="switch" id="hide-drafts" />
+            <label
+              class="form-check-label text-nowrap"
+              for="hide-drafts"
+              title="Hide draft PRs from every list, including &quot;Authored&quot;.">
+              Hide drafts
             </label>
           </div>
           <div class="form-check form-switch ms-3 align-self-center">
